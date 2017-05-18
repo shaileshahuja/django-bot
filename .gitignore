@@ -1,0 +1,9 @@
+.idea/
+*.pyc
+venv/
+*local_settings.py
+*celery_logs*
+*.DS_Store
+*app.log*
+logfile*
+logs/
