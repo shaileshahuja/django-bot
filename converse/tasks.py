@@ -65,12 +65,18 @@ def retrieve_channel_users(slack_auth_id):
     slack_auth = SlackAuth.objects.get(pk=slack_auth_id)
     sc = SlackClient(slack_auth.bot_access_token)
     channels = sc.api_call("channels.list")
+    if not channels["ok"]:
+        return
     for channel in channels["channels"]:
         if not SlackChannel.objects.filter(slack_id=channel['id'], slack_auth=slack_auth).exists():
             SlackChannel.objects.create(slack_auth=slack_auth, slack_id=channel['id'],
                                         is_main=channel["is_general"], name=channel['name'])
     users = sc.api_call("users.list")
+    if not users["ok"]:
+        return 
     dms = sc.api_call("im.list")
+    if not dms["ok"]:
+        return
     user_channel = {}
     for dm in dms["ims"]:
         user_channel[dm["user"]] = dm["id"]
