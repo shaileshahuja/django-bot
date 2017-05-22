@@ -6,7 +6,7 @@ from converse.messengers import SlackMessenger, MessengerBase
 
 class TestMessenger(unittest.TestCase):
     def setUp(self):
-        self.messengers = {"slack": SlackMessenger(os.environ["slack_token"], os.environ["slack_channel"])}
+        self.messengers = {"slack": SlackMessenger(os.environ["SLACK_TOKEN"], os.environ["SLACK_CHANNEL"])}
 
     def test_send(self):
         text = "hello"
