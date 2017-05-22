@@ -1,17 +1,13 @@
 sudo: false
 language: python
 python:
-  - "3.5"
-env:
-  matrix:
-    - TOX_ENV=py27
-    - TOX_ENV=py34
-    - TOX_ENV=py35
-    - TOX_ENV=py36
-    - TOX_ENV=flake8
+    - "2.7"
+    - "3.4"
+    - "3.5"
+    - "3.6"
 cache: pip
 install:
-  - "travis_retry pip install tox"
+  - "travis_retry pip install tox-travis"
 script:
   - tox
 after_script:
