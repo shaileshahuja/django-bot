@@ -45,7 +45,7 @@ def slack_action_event(action_event):
 def message_event(talk_user, message):
     assert isinstance(talk_user, TalkUser)
     parser = parser_class()
-    response_text, action, action_complete, params, contexts = parser.parse(message, talk_user)
+    response_text, action, action_complete, params, contexts = parser.parse(message, talk_user.session_id)
     logger.debug("Action: {}, Params: {}, Contexts: {}".format(action, params, contexts))
     if response_text:
         talk_user.messenger.send_text(response_text)
@@ -75,7 +75,7 @@ def retrieve_channel_users(slack_auth_id):
     for dm in dms["ims"]:
         user_channel[dm["user"]] = dm["id"]
     for user in users["members"]:
-        if user["is_bot"] or user["id"] == "USLACKBOT":
+        if user["is_bot"] or user["id"] == "USLACKBOT" or user["id"] not in user_channel:
             continue
         if SlackUser.objects.filter(slack_id=user["id"], slack_auth=slack_auth).exists():
             SlackUser.objects.filter(slack_id=user["id"],
