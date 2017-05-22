@@ -73,7 +73,7 @@ def retrieve_channel_users(slack_auth_id):
                                         is_main=channel["is_general"], name=channel['name'])
     users = sc.api_call("users.list")
     if not users["ok"]:
-        return 
+        return
     dms = sc.api_call("im.list")
     if not dms["ok"]:
         return

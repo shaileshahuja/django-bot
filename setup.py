@@ -12,7 +12,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='django-bot',
-    version='0.0.3',
+    version='0.0.4',
     packages=find_packages(exclude=['contrib', 'docs', 'tests']),
     install_requires=["celery>=4.0", "slackclient==1.0.5", "Django>=1.8", "apiai==1.2.3"],
     url='https://github.com/shaileshahuja/django-bot',
