@@ -1,5 +1,6 @@
-# django-bot
-A django library that makes it easier to develop bots with django 
+django-bot
+===================
+A django library that makes it easier to develop bots with django.
 
 |build-status| |pypi-version|
 
@@ -7,3 +8,4 @@ A django library that makes it easier to develop bots with django
     :target: https://travis-ci.org/shaileshahuja/django-bot
 .. |pypi-version| image:: https://badge.fury.io/py/django-bot.svg
     :target: https://pypi.python.org/pypi/django-bot
+
