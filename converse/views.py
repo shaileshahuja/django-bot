@@ -5,12 +5,12 @@ import traceback
 from django.conf import settings
 from django.http.response import HttpResponseRedirect, HttpResponse
 from django.urls import reverse
-from django.views.generic.base import View, TemplateView
+from django.views.generic.base import View
 from slackclient import SlackClient
 
-from converse.tasks import slack_message_event, slack_action_event
 from converse.models import SlackAuth
 from converse.tasks import retrieve_channel_users
+from converse.tasks import slack_message_event, slack_action_event
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class SlackOAuthView(View):
                                                   bot_access_token=result["bot"]["bot_access_token"])
             retrieve_channel_users.delay(slack_auth.pk)
             return HttpResponseRedirect("http://talkai.xyz/success.html")
-        except Exception as e:
+        except Exception:
             logger.error(traceback.format_exc())
             return HttpResponseRedirect("http://talkai.xyz/failure.html")
 

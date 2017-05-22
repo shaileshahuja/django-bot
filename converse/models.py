@@ -1,11 +1,10 @@
 from __future__ import unicode_literals
 
-import abc
-
-from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.functional import cached_property
+
 from converse.messengers import SlackMessenger
 
 
@@ -90,6 +89,9 @@ class Group(models.Model):
         if hasattr(self, "slackchannel"):
             return self.slackchannel.members
         return None
+
+    def __unicode__(self):
+        return self.name
 
 
 class SlackChannel(Group):
@@ -176,6 +178,7 @@ class TalkUser(models.Model):
 
 class SlackUser(TalkUser):
     slack_id = models.CharField(max_length=30)
+    slack_channel = models.CharField(max_length=30, null=True, blank=True)
     slack_auth = models.ForeignKey(to=SlackAuth, related_name='slack_users')
 
     @property
@@ -184,7 +187,7 @@ class SlackUser(TalkUser):
 
     @cached_property
     def messenger(self):
-        return SlackMessenger(self.slack_auth.bot_access_token, self.slack_id)
+        return SlackMessenger(self.slack_auth.bot_access_token, self.slack_channel or self.slack_id)
 
     @cached_property
     def session_id(self):
@@ -192,4 +195,3 @@ class SlackUser(TalkUser):
 
     class Meta:
         unique_together = ('slack_id', 'slack_auth')
-

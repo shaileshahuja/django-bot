@@ -1,12 +1,11 @@
+import logging
+from pydoc import locate
+
 from celery.app import shared_task
+from django.conf import settings
 from slackclient import SlackClient
-import re
 
 from converse.models import TalkUser, SlackAuth, SlackUser, SlackChannel
-import logging
-import traceback
-from django.conf import settings
-from pydoc import locate
 
 logger = logging.getLogger(__name__)
 parser_class = locate(settings.TEXT_PARSER)
@@ -71,9 +70,19 @@ def retrieve_channel_users(slack_auth_id):
             SlackChannel.objects.create(slack_auth=slack_auth, slack_id=channel['id'],
                                         is_main=channel["is_general"], name=channel['name'])
     users = sc.api_call("users.list")
+    dms = sc.api_call("im.list")
+    user_channel = {}
+    for dm in dms["ims"]:
+        user_channel[dm["user"]] = dm["id"]
     for user in users["members"]:
         if user["is_bot"] or user["id"] == "USLACKBOT":
             continue
-        if not SlackUser.objects.filter(slack_id=user["id"], slack_auth=slack_auth).exists():
+        if SlackUser.objects.filter(slack_id=user["id"], slack_auth=slack_auth).exists():
+            SlackUser.objects.filter(slack_id=user["id"],
+                                     slack_auth=slack_auth).update(email=user["profile"]["email"],
+                                                                   name=user["profile"]["real_name"],
+                                                                   slack_channel=user_channel[user["id"]])
+        else:
             SlackUser.objects.create(email=user["profile"]["email"], name=user["profile"]["real_name"],
-                                     slack_id=user["id"], slack_auth=slack_auth)
+                                     slack_id=user["id"], slack_channel=user_channel[user["id"]],
+                                     slack_auth=slack_auth)
