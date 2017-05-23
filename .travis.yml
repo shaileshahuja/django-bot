@@ -1,10 +1,15 @@
 sudo: false
 language: python
-python:
-    - "2.7"
-    - "3.4"
-    - "3.5"
-    - "3.6"
+jobs:
+  include:
+    - stage: test1
+      python: "2.7"
+    - stage: test2
+      python: "3.4"
+    - stage: test3
+      python: "3.5"
+    - stage: test4
+      python: "3.6"
 cache: pip
 install:
   - "travis_retry pip install tox-travis"
