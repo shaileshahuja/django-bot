@@ -93,7 +93,7 @@ The following steps will help you get started with django-bot.
    from converse.models import TalkUser, AbstractUser
    
    @receiver(post_save, dispatch_uid="create my app users")
-   def create_tickerbot_user(sender, instance, created, **kwargs):
+   def create_myapp_user(sender, instance, created, **kwargs):
        if isinstance(instance, TalkUser) and created:
            MyUser.objects.create(talk_user=instance)
 
