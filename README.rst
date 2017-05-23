@@ -1,6 +1,6 @@
 django-bot
 ===================
-A django library that makes it easier to develop bots with django.
+A django library that makes it easier to develop bots with a common interface for Slack, Facebook Messenger, Telegram, Kik, Google Assistant, Cortana, Alexa and more.
 
 |build-status| |pypi-version|
 
@@ -9,3 +9,5 @@ A django library that makes it easier to develop bots with django.
 .. |pypi-version| image:: https://badge.fury.io/py/django-bot.svg
     :target: https://pypi.python.org/pypi/django-bot
 
+Overview
+===================
