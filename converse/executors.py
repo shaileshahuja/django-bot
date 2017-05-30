@@ -22,9 +22,9 @@ class Executor:
         A decorator class that identifies the action on which this object should be called. If the object decorated is
         a class, it should extend `ActionBase` and override the execute method.
         The following arguments are passed to the decorated method:
-        1. user: The application user for which this action needs to be executed. 
+        1. user: The application user for which this action needs to be executed.
         2. params: a dict (str: str) of parameters parsed from the text
-        3. contexts: a dict (str: dict), the outer dict has keys as the name of the contexts the inner dict has 
+        3. contexts: a dict (str: dict), the outer dict has keys as the name of the contexts the inner dict has
                      key-value pairs for params in these contexts
         When the decorated object is a class, these arguments are passed to the constructor instead
         :param action: The name of the action

@@ -60,5 +60,3 @@ class APIAIParser(ParserBase):
         parser_response.contexts = contexts
         parser_response.slot_filling_complete = not response["result"]["actionIncomplete"]
         return parser_response
-
-
