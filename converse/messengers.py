@@ -7,6 +7,18 @@ from slackclient import SlackClient
 logger = logging.getLogger(__name__)
 
 
+class QuickReply:
+    def __init__(self, text, value=None):
+        self.text = text
+        self.value = value or text
+
+    def __eq__(self, other):
+        return self.text == other.text and self.value == other.value
+
+    def __unicode__(self):
+        return "{} - {}".format(self.text, self.value)
+
+
 class MessengerBase:
     __metaclass__ = abc.ABCMeta
 
@@ -14,15 +26,35 @@ class MessengerBase:
         pass
 
     def send(self, text):
+        """
+        Send a text via this messenger
+        :param text: string
+        :return: bool, true if method is successful
+        """
         pass
 
-    def send_text(self, text, actions=None):
+    def send_text(self, text, quick_replies=None):
+        """
+        Send a text with a list of actions
+        :param text: string
+        :param quick_replies: list<action>
+        :return: bool, true if method is successful
+        """
         pass
 
-    def send_image(self, image_url, actions=None):
+    def send_image(self, image_url, quick_replies=None):
+        """
+        Send an image with a list of actions
+        :param image_url: string
+        :param quick_replies: list<action>
+        :return: bool, true if method is successful
+        """
         pass
 
     def get_latest(self):
+        """
+        :return: (text, image_url, action_list), of the last message
+        """
         pass
 
 
@@ -35,17 +67,17 @@ class SlackMessenger(MessengerBase):
     def send(self, text):
         return self.send_to_slack(text=text)
 
-    def send_image(self, image_url, actions=None):
+    def send_image(self, image_url, quick_replies=None):
         attachment = {"fallback": "image", "image_url": image_url, "callback_id": self.channel}
-        if actions:
-            attachment["actions"] = self.format_actions(actions)
+        if quick_replies:
+            attachment["actions"] = self.format_quick_replies(quick_replies)
         return self.send_to_slack(attachment=attachment)
 
-    def send_text(self, text, actions=None):
+    def send_text(self, text, quick_replies=None):
         attachment = {"fallback": "New message", "color": "#3AA3E3", "text": text, "mrkdwn_in": ["text"],
                       "callback_id": self.channel}
-        if actions:
-            attachment["actions"] = self.format_actions(actions)
+        if quick_replies:
+            attachment["actions"] = self.format_quick_replies(quick_replies)
         return self.send_to_slack(attachment=attachment)
 
     def get_latest(self):
@@ -59,29 +91,30 @@ class SlackMessenger(MessengerBase):
                 image_url = attachment["image_url"]
             if "text" in attachment:
                 text = attachment["text"]
-            action_list = self.parse_actions(attachment)
+            action_list = self.parse_quick_replies(attachment)
         return text, image_url, action_list
 
-    def parse_actions(self, attachment):
+    @staticmethod
+    def parse_quick_replies(attachment):
         if "actions" not in attachment:
             return None
-        action_list = []
+        quick_reply_list = []
         for action_item in attachment["actions"]:
-            action = {"text": action_item["text"], "value": action_item["value"]}
-            action_list.append(action)
-        return action_list
+            quick_reply = QuickReply(text=action_item["text"], value=action_item["value"])
+            quick_reply_list.append(quick_reply)
+        return quick_reply_list
 
     @staticmethod
-    def format_actions(actions):
-        action_list = []
-        for action in actions:
-            action_list.append({
-                "name": action["value"],
-                "text": action["text"],
+    def format_quick_replies(quick_replies):
+        quick_reply_list = []
+        for quick_reply in quick_replies:
+            quick_reply_list.append({
+                "name": quick_reply.value,
+                "text": quick_reply.text,
                 "type": "button",
-                "value": action["value"]
+                "value": quick_reply.value
             })
-        return action_list
+        return quick_reply_list
 
     def send_to_slack(self, text=None, attachment=None):
         params = {"channel": self.channel, "as_user": True, "mrkdwn": True}

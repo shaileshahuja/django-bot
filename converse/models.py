@@ -4,8 +4,11 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.functional import cached_property
-
 from converse.messengers import SlackMessenger
+from django.db.models.signals import post_save
+from django.dispatch.dispatcher import receiver
+from pydoc import locate
+from django.conf import settings
 
 
 class Auth(models.Model):
@@ -123,10 +126,10 @@ class SlackChannel(Group):
 
 class AbstractUserQuerySet(models.QuerySet):
     def get(self, *args, **kwargs):
-        talk_user = kwargs.pop("talk_user", None)
-        if talk_user is not None:
-            kwargs["content_type_id"] = ContentType.objects.get_for_model(talk_user).pk
-            kwargs["object_id"] = talk_user.id
+        converse_user = kwargs.pop("converse_user", None)
+        if converse_user is not None:
+            kwargs["content_type_id"] = ContentType.objects.get_for_model(converse_user).pk
+            kwargs["object_id"] = converse_user.id
         return super(AbstractUserQuerySet, self).get(*args, **kwargs)
 
 
@@ -135,10 +138,46 @@ class AbstractUser(models.Model):
 
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
-    talk_user = GenericForeignKey('content_type', 'object_id')
+    _converse_user = GenericForeignKey('content_type', 'object_id')
+
+    @property
+    def converse_user(self):
+        """
+        :return: ConverseUser instance
+        """
+        assert isinstance(self._converse_user, TalkUser)
+        return self._converse_user
+
+    @property
+    def messenger(self):
+        return self._converse_user.messenger
+
+    @property
+    def name(self):
+        return self._converse_user.name
+
+    @property
+    def email(self):
+        return self._converse_user.email
+
+    @property
+    def natural_identifier(self):
+        return self._converse_user.natural_identifier
+
+    @property
+    def auth(self):
+        return self._converse_user.auth
 
     class Meta:
         abstract = True
+
+
+@receiver(post_save, dispatch_uid="create app users")
+def create_app_user(sender, instance, created, **kwargs):
+    if isinstance(instance, TalkUser) and created:
+        AppUser = locate(settings.DJANGO_BOT_USER)
+        assert issubclass(AppUser, AbstractUser)
+        AppUser.objects.create(_converse_user=instance)
 
 
 class TalkUser(models.Model):

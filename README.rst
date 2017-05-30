@@ -1,5 +1,5 @@
 django-bot
-===================
+==========
 A django library that makes it easier to develop bots with a common interface for messaging platforms (eg. Slack, FB messenger) and natural langauge parsers (eg. api.ai).
 
 |build-status| |pypi-version|
@@ -10,49 +10,75 @@ A django library that makes it easier to develop bots with a common interface fo
     :target: https://pypi.python.org/pypi/django-bot
 
 Overview
-===================
-BETA version: Currently django-bot only supports Slack and api.ai. Future plans include supporting more messaging platforms (Facebook Messenger, Telegram, Kik, Google assistant, Cortana, Skype, Alexa), and more natural langauge parsers (AWS, wit.ai).
+========
+BETA version: Currently django-bot only supports Slack and api.ai. Future plans include supporting more messaging platforms (Facebook Messenger, Telegram, Kik, Google assistant, Cortana, Skype, Alexa), and more natural langauge parsers (AWS Lex, wit.ai).
 
 This library helps to maintain authenticated users and groups in the database and allows you to respond to any messages as well as initiate conversations with any of those.
 
 Requirements and Installation
-******************************
+*****************************
 
 django-bot for Python works with Python 2.7, 3.4, 3.5, 3.6 and django >= 1.8, and requires ``PyPI`` to install dependencies. The message parsing and delivery is done in the background with the help of celery. It also requires slackclient and apiai python libraries for communication with the external services. 
 
 .. code-block:: bash
 
-	pip install django-bot
+    pip install django-bot
 
 Of course, if you prefer doing things the hard way, by pulling down the source code directly into your project:
 
 .. code-block:: bash
 
-	git clone https://github.com/shaileshahuja/django-bot.git
-
-Basic classes
-==================== 
-``converse.messengers.MessengerBase``
-*************************************** 
-This class provides the API for all messenger classes. ``converse.messengers.SlackMessenger`` implements this API, and so will all future implementations of other messengers.
-
-Methods:
-^^^^^^^^^^
-``send``: To send a plaintext message.
-
-``send_text``: To send a message with actions.
-
-``send_image``: To send an image with actions.
-
-Actions are instant prompts for the user to click and respond. In Slack, they are sent as quick replies. 
-
-``converse.parsers.APIAIParser``
-*************************************** 
-Parsers implement the parse method, which receives the text to be parsed and the session id.
+    git clone https://github.com/shaileshahuja/django-bot.git
 
 Getting started
-====================
-The following steps will help you get started with django-bot.
+===============
+First, we need to define the model and attributes every user communicating with the bot will hold.
+
+``models.py``
+
+.. code-block:: python
+
+   from converse.models import AbstractUser
+
+   class MyUser(AbstractUser):
+       credits = models.FloatField(default=0.0)
+
+We also need to register this model.
+
+``settings.py``
+
+.. code-block:: python
+
+   DJANGO_BOT_USER = '<path to model>' # 'x.models.MyUser'
+
+This user model is automatically created for each authenticated user. For example, if a slack team is authenticated, ``MyUser`` object will be created for each user in the team. Make sure to define defaults for all fields.
+
+Then, we need to define actions that can be triggered when the user sends a message. The parser will detect the intent of the user, extract parameters and the pass action be to taken back to the calling program.
+
+``actions.py``
+
+.. code-block:: python
+
+   @Executor(action="account.balance")
+   class PortfolioCashQuery(ActionBase):
+       @property
+       def execute(self):
+           self.user.send("Please wait while we retrieve your details...")
+           # this method is called in the background, so it is safe to make time consuming API requests
+           self.user.send_text("You have ${:.2f} left in your account".format(self.user.credits),
+                                quick_replies=[QuickReply("buy credits"), QuickReply("redeem gift")]
+
+We also need to tell django where the action classes / methods are written.
+
+``settings.py``
+
+.. code-block:: python
+
+   ACTION_MODULES = ['<list of modules where actions can be found>'] # ['x.actions']
+
+Integrating with Slack
+**********************
+Create a Slack app via the developer portal, and add the following credentials to your django application.
 
 ``settings.py``
 
@@ -62,17 +88,7 @@ The following steps will help you get started with django-bot.
    SLACK_CLIENT_SECRET = '<your slack client secret>'
    SLACK_VERIFICATION_TOKEN = '<your slack verification token>'
 
-   # right now this is the only supported NLP framework for chatbots
-   TEXT_PARSER = 'converse.parsers.APIAIParser'
-   API_AI_CLIENT_TOKEN = '<your api.ai client token>'
-   
-   # when actions are returned from the NLP framework, they need to be parsed and executed
-   # ClassNameExecutor will call execute method in CLASS_EXECUTOR_PREFIX + camelCase(action) + CLASS_EXECUTOR_SUFFIX
-   # for the following settings, if action is passed as 'portfolio.buy', an instance of myapp.actions.PortfolioBuyQuery
-   # will be constructed with arguments (talk_user, params, contexts) and the execute method will be called
-   ACTION_EXECUTOR = 'converse.executors.ClassNameExecutor'
-   CLASS_EXECUTOR_PREFIX = 'myapp.actions.'
-   CLASS_EXECUTOR_SUFFIX = 'Query'
+Next, add this to your django URLs.
 
 ``urls.py``
 
@@ -83,19 +99,49 @@ The following steps will help you get started with django-bot.
        url(r'^converse/', include('converse.urls', namespace='converse'))
    ]
 
-``models.py``
+Next, start your server (behind https, try ngrok if in development environment), and add these URLs to your Slack app.
+
+OAuth & Permissions -> Redirect URLs: <https base url>/converse/slack/oauth
+Event Subscriptions -> Request URL: <https base url>/converse/slack/webhook
+Interactive Messages -> Request URL: <https base url>/converse/slack/action
+
+Integrating with api.ai
+***********************
+
+``settings.py``
 
 .. code-block:: python
 
-   from django.db import models
-   from django.db.models.signals import post_save
-   from django.dispatch.dispatcher import receiver
-   from converse.models import TalkUser, AbstractUser
-   
-   @receiver(post_save, dispatch_uid="create my app users")
-   def create_myapp_user(sender, instance, created, **kwargs):
-       if isinstance(instance, TalkUser) and created:
-           MyUser.objects.create(talk_user=instance)
+   # right now this is the only supported NLP framework for chatbots
+   TEXT_PARSER = 'converse.parsers.APIAIParser'
+   API_AI_CLIENT_TOKEN = '<your api.ai client token>'
 
-   class MyUser(AbstractUser):
-       my_field = models.BooleanField(default=True)
+To match the actions in api.ai to the actions you write, make sure the name in ``@Executor(action="<name>") is the same as the one the 'actions' field in your intent. You can access the slot filling params using ``self.params`` and the conversation context using ``self.contexts``.
+
+Sending messages as the bot
+***************************
+
+``converse.messengers.MessengerBase``: This class provides the API for all messenger classes. ``converse.messengers.SlackMessenger`` implements this API, and so will all future implementations of other messengers.
+
+Methods:
+^^^^^^^^
+``send``: To send a plaintext message.
+
+``send_text``: To send a message with quick replies.
+
+``send_image``: To send an image with quick replies.
+
+Quick replies are instant prompts for the user to click and respond. In Slack, they are sent as actions.
+
+Example:
+
+.. code-block:: python
+
+   user.messenger.send_text("Are you sure?", quick_replies=[QuickReply("yes"), QuickReply(text="Cancel", value="No")])
+
+Clicking on 'yes' will send a request back to your server with query ``QuickReply.value``.
+
+Implementing your own parser
+****************************
+Parsers are responsible for understanding the intent of the user from the text query, which receives the text to be parsed and the session id. The session id can be used to respond to queries with context.
+``converse.parsers.APIAIParser`` is one such parser that connects to api.ai. You may implement your own by extending ``converse.parsers.ParserBase`` and implementing the ``parse`` method. This method receives the text query and the session id and should return a ``ParserResponse`` object.
