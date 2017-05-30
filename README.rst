@@ -102,7 +102,9 @@ Next, add this to your django URLs.
 Next, start your server (behind https, try ngrok if in development environment), and add these URLs to your Slack app.
 
 OAuth & Permissions -> Redirect URLs: <https base url>/converse/slack/oauth
+
 Event Subscriptions -> Request URL: <https base url>/converse/slack/webhook
+
 Interactive Messages -> Request URL: <https base url>/converse/slack/action
 
 Integrating with api.ai
@@ -116,12 +118,14 @@ Integrating with api.ai
    TEXT_PARSER = 'converse.parsers.APIAIParser'
    API_AI_CLIENT_TOKEN = '<your api.ai client token>'
 
-To match the actions in api.ai to the actions you write, make sure the name in ``@Executor(action="<name>") is the same as the one the 'actions' field in your intent. You can access the slot filling params using ``self.params`` and the conversation context using ``self.contexts``.
+To match the actions in api.ai to the actions you write, make sure the name in ``@Executor(action="<name>")`` is the same as the one the 'actions' field in your intent. You can access the slot filling params using ``self.params`` and the conversation context using ``self.contexts``.
 
 Sending messages as the bot
 ***************************
 
-``converse.messengers.MessengerBase``: This class provides the API for all messenger classes. ``converse.messengers.SlackMessenger`` implements this API, and so will all future implementations of other messengers.
+``converse.messengers.MessengerBase``: This class provides the API for all messenger classes
+
+``converse.messengers.SlackMessenger``: Implements this API, and so will all future implementations of other messengers
 
 Methods:
 ^^^^^^^^
