@@ -7,28 +7,35 @@ from django.utils.functional import cached_property
 from converse.messengers import SlackMessenger
 from django.db.models.signals import post_save
 from django.dispatch.dispatcher import receiver
-from pydoc import locate
-from django.conf import settings
+import logging
+logger = logging.getLogger(__name__)
 
 
 class Auth(models.Model):
     @cached_property
-    def main_group(self):
+    def messenger(self):
         if hasattr(self, "slackauth"):
-            return self.slackauth.main_group
+            return self.slackauth.messenger
         return None
 
     @property
     def users(self):
-        if hasattr(self, "slackauth"):
-            return self.slackauth.users
-        return None
+        converse_users = self._users
+        AppUser = AbstractUser.implementation()
+        return AppUser.objects.filter(content_type_id=ContentType.objects.get_for_model(converse_users.first()).pk,
+                                      object_id__in=[converse_user.pk for converse_user in converse_users.all()])
 
     @property
-    def groups(self):
+    def _users(self):
         if hasattr(self, "slackauth"):
-            return self.slackauth.groups
-        return None
+            return self.slackauth._users
+        return []
+
+    # @property
+    # def groups(self):
+    #     if hasattr(self, "slackauth"):
+    #         return self.slackauth.groups
+    #     return None
 
     @cached_property
     def name(self):
@@ -45,16 +52,19 @@ class SlackAuth(Auth):
     bot_access_token = models.CharField(max_length=200)
 
     @cached_property
-    def main_group(self):
-        return self.slack_channels.filter(is_main=True).first()
+    def messenger(self):
+        queryset = self.slack_channels.filter(is_main=True)
+        if queryset.exists():
+            return queryset.first().messenger
+        return None
 
     @property
-    def users(self):
+    def _users(self):
         return self.slack_users
 
-    @property
-    def groups(self):
-        return self.slack_channels
+    # @property
+    # def groups(self):
+    #     return self.slack_channels
 
     @cached_property
     def name(self):
@@ -69,9 +79,13 @@ class Group(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     @property
-    def auth(self):
+    def org(self):
+        return AbstractOrganization.implementation().objects.get(converse_org=self._org)
+
+    @property
+    def _org(self):
         if hasattr(self, "slackchannel"):
-            return self.slackchannel.auth
+            return self.slackchannel._org
         return None
 
     @cached_property
@@ -86,12 +100,12 @@ class Group(models.Model):
             return self.slackchannel.session_id
         return None
 
-    @property
-    def members(self):
-        """Returns a set of TalkUsers"""
-        if hasattr(self, "slackchannel"):
-            return self.slackchannel.members
-        return None
+    # @property
+    # def members(self):
+    #     """Returns a set of TalkUsers"""
+    #     if hasattr(self, "slackchannel"):
+    #         return self.slackchannel.members
+    #     return None
 
     def __unicode__(self):
         return self.name
@@ -103,7 +117,7 @@ class SlackChannel(Group):
     is_main = models.BooleanField(default=False)
 
     @property
-    def auth(self):
+    def _org(self):
         return self.slack_auth
 
     @cached_property
@@ -114,70 +128,12 @@ class SlackChannel(Group):
     def session_id(self):
         return self.slack_auth.team_id + "-" + self.slack_id
 
-    @property
-    def members(self):
-        if self.is_main:
-            return self.slack_auth.slack_users.all()
-        return None
+    # @property
+    # def members(self):
+    #     return None
 
     class Meta:
         unique_together = ('slack_id', 'slack_auth')
-
-
-class AbstractUserQuerySet(models.QuerySet):
-    def get(self, *args, **kwargs):
-        converse_user = kwargs.pop("converse_user", None)
-        if converse_user is not None:
-            kwargs["content_type_id"] = ContentType.objects.get_for_model(converse_user).pk
-            kwargs["object_id"] = converse_user.id
-        return super(AbstractUserQuerySet, self).get(*args, **kwargs)
-
-
-class AbstractUser(models.Model):
-    objects = AbstractUserQuerySet.as_manager()
-
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveIntegerField()
-    _converse_user = GenericForeignKey('content_type', 'object_id')
-
-    @property
-    def converse_user(self):
-        """
-        :return: ConverseUser instance
-        """
-        assert isinstance(self._converse_user, TalkUser)
-        return self._converse_user
-
-    @property
-    def messenger(self):
-        return self._converse_user.messenger
-
-    @property
-    def name(self):
-        return self._converse_user.name
-
-    @property
-    def email(self):
-        return self._converse_user.email
-
-    @property
-    def natural_identifier(self):
-        return self._converse_user.natural_identifier
-
-    @property
-    def auth(self):
-        return self._converse_user.auth
-
-    class Meta:
-        abstract = True
-
-
-@receiver(post_save, dispatch_uid="create app users")
-def create_app_user(sender, instance, created, **kwargs):
-    if isinstance(instance, TalkUser) and created:
-        AppUser = locate(settings.DJANGO_BOT_USER)
-        assert issubclass(AppUser, AbstractUser)
-        AppUser.objects.create(_converse_user=instance)
 
 
 class TalkUser(models.Model):
@@ -190,9 +146,13 @@ class TalkUser(models.Model):
         return self.email if not self.name else self.name
 
     @property
-    def auth(self):
+    def org(self):
+        return AbstractOrganization.implementation().objects.get(converse_org=self._org)
+
+    @property
+    def _org(self):
         if hasattr(self, "slackuser"):
-            return self.slackuser.auth
+            return self.slackuser._org
         return None
 
     @cached_property
@@ -211,8 +171,8 @@ class TalkUser(models.Model):
     def __unicode__(self):
         return self.natural_identifier
 
-    # class Meta:
-    #     abstract = True
+        # class Meta:
+        #     abstract = True
 
 
 class SlackUser(TalkUser):
@@ -221,7 +181,7 @@ class SlackUser(TalkUser):
     slack_auth = models.ForeignKey(to=SlackAuth, related_name='slack_users')
 
     @property
-    def auth(self):
+    def _org(self):
         return self.slack_auth
 
     @cached_property
@@ -234,3 +194,88 @@ class SlackUser(TalkUser):
 
     class Meta:
         unique_together = ('slack_id', 'slack_auth')
+
+
+class AbstractUserQuerySet(models.QuerySet):
+    def get(self, *args, **kwargs):
+        converse_user = kwargs.pop("converse_user", None)
+        if converse_user is not None:
+            kwargs["content_type_id"] = ContentType.objects.get_for_model(converse_user).pk
+            kwargs["object_id"] = converse_user.pk
+        return super(AbstractUserQuerySet, self).get(*args, **kwargs)
+
+
+class AbstractUser(models.Model):
+    objects = AbstractUserQuerySet.as_manager()
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    _converse_user = GenericForeignKey('content_type', 'object_id')
+
+    def __getattr__(self, item):
+        if not item.startswith('_'):
+            try:
+                return getattr(self._converse_user, item)
+            except AttributeError:
+                pass
+        raise AttributeError("'{}' object has no attribute '{}'".format(type(self), item))
+
+    @classmethod
+    def implementation(cls):
+        sub = cls.__subclasses__()
+        if len(sub) != 1:
+            error = "{} should have exactly 1 subclass, current subclasses: {} ".format(cls, sub)
+            logger.error(error)
+            raise RuntimeError(error)
+        return sub[0]
+
+    class Meta:
+        abstract = True
+
+
+class AbstractOrganizationQuerySet(models.QuerySet):
+    def get(self, *args, **kwargs):
+        converse_org = kwargs.pop("converse_org", None)
+        if converse_org is not None:
+            kwargs["content_type_id"] = ContentType.objects.get_for_model(converse_org).pk
+            kwargs["object_id"] = converse_org.pk
+        return super(AbstractOrganizationQuerySet, self).get(*args, **kwargs)
+
+
+class AbstractOrganization(models.Model):
+    objects = AbstractOrganizationQuerySet.as_manager()
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    _converse_org = GenericForeignKey('content_type', 'object_id')
+
+    def __getattr__(self, item):
+        if not item.startswith('_'):
+            try:
+                return getattr(self._converse_org, item)
+            except AttributeError:
+                pass
+        raise AttributeError("'{}' object has no attribute '{}'".format(type(self), item))
+
+    @classmethod
+    def implementation(cls):
+        sub = cls.__subclasses__()
+        if len(sub) != 1:
+            error = "{} should have exactly 1 subclass, current subclasses: {} ".format(cls, sub)
+            logger.error(error)
+            raise RuntimeError(error)
+        return sub[0]
+
+    def __unicode__(self):
+        return self._converse_org.name
+
+    class Meta:
+        abstract = True
+
+
+@receiver(post_save, dispatch_uid="create app users")
+def create_app_models(sender, instance, created, **kwargs):
+    if isinstance(instance, TalkUser) and created:
+        AbstractUser.implementation().objects.create(_converse_user=instance)
+    if isinstance(instance, Auth) and created:
+        AbstractOrganization.implementation().objects.create(_converse_org=instance)

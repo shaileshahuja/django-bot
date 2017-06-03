@@ -6,7 +6,7 @@ from django.conf import settings
 from slackclient import SlackClient
 
 from converse.executors import Executor
-from converse.models import TalkUser, SlackAuth, SlackUser, SlackChannel
+from converse.models import TalkUser, SlackAuth, SlackUser, SlackChannel, AbstractUser
 from converse.parsers import ParserResponse
 
 logger = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ def message_event(converse_user, message):
     if response.text:
         converse_user.messenger.send(response.text)
     if response.slot_filling_complete and response.action:
-        app_user = locate(settings.DJANGO_BOT_USER).objects.get(converse_user=converse_user)
+        app_user = AbstractUser.implementation().objects.get(converse_user=converse_user)
         Executor.execute(action=response.action, user=app_user, params=response.params, contexts=response.contexts)
 
 

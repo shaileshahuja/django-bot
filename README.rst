@@ -32,7 +32,11 @@ Of course, if you prefer doing things the hard way, by pulling down the source c
 
 Getting started
 ===============
-First, we need to define the model and attributes every user communicating with the bot will hold.
+
+User model
+**********
+
+First, we need to define the model and attributes of every user communicating with the bot.
 
 ``models.py``
 
@@ -43,15 +47,44 @@ First, we need to define the model and attributes every user communicating with 
    class MyUser(AbstractUser):
        credits = models.FloatField(default=0.0)
 
-We also need to register this model.
+This user model is automatically created for each authenticated user. For example, if a slack team is authenticated, ``MyUser`` object will be created for each user in the team. Make sure to define defaults for all fields.
 
-``settings.py``
+Default properties available
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``org``: The organization this user belongs to.
+
+``messenger``: Returns an implementation of ``converse.messengers.MessengerBase`` object. This messenger object can be used to send messages to the user. It exposes a consistent interface for different platforms.
+
+``email``: The email address of the user, if available
+
+``name``: The name of the user, if available
+
+Organization model
+******************
+
+You must also define a model that will be instantiated for each organization that authenticates your bot. Again, remember to define defaults for any custom fields.
+
+``models.py``
 
 .. code-block:: python
 
-   DJANGO_BOT_USER = '<path to model>' # 'x.models.MyUser'
+   from converse.models import AbstractOrganization
 
-This user model is automatically created for each authenticated user. For example, if a slack team is authenticated, ``MyUser`` object will be created for each user in the team. Make sure to define defaults for all fields.
+   class Organization(AbstractOrganization):
+       pass
+
+Default properties available
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``users``: A queryset of user objects that belong to this organization
+
+``messenger``: Returns an implementation of ``converse.messengers.MessengerBase`` object. This messenger object can be used to send messages to a group common to all members of the organization. In Slack, this will send a message to #general.
+
+``name``: The name of the organization, if available
+
+Actions
+*******
 
 Then, we need to define actions that can be triggered when the user sends a message. The parser will detect the intent of the user, extract parameters and the pass action be to taken back to the calling program.
 
@@ -60,13 +93,13 @@ Then, we need to define actions that can be triggered when the user sends a mess
 .. code-block:: python
 
    @Executor(action="account.balance")
-   class PortfolioCashQuery(ActionBase):
+   class CreditsQuery(ActionBase):
        @property
        def execute(self):
-           self.user.send("Please wait while we retrieve your details...")
+           self.user.messenger.send("Please wait while we retrieve your details...")
            # this method is called in the background, so it is safe to make time consuming API requests
-           self.user.send_text("You have ${:.2f} left in your account".format(self.user.credits),
-                                quick_replies=[QuickReply("buy credits"), QuickReply("redeem gift")]
+           self.user.messenger.send_text("You have ${:.2f} left in your account".format(self.user.credits),
+                                         quick_replies=[QuickReply("buy credits"), QuickReply("redeem gift")]
 
 We also need to tell django where the action classes / methods are written.
 
@@ -125,7 +158,7 @@ Sending messages as the bot
 
 ``converse.messengers.MessengerBase``: This class provides the API for all messenger classes
 
-``converse.messengers.SlackMessenger``: Implements this API, and so will all future implementations of other messengers
+``converse.messengers.SlackMessenger``: Implements this API, and so will all future implementations of other messengers.
 
 Methods:
 ^^^^^^^^

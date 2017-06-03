@@ -32,11 +32,16 @@ class SlackOAuthView(View):
             result = sc.api_call("oauth.access", client_id=settings.SLACK_CLIENT_ID,
                                  client_secret=settings.SLACK_CLIENT_SECRET, code=code,
                                  redirect_uri=request.build_absolute_uri(reverse('converse:slack:oauth')))
-            if SlackAuth.objects.filter(team_id=result["team_id"]).exists():
-                SlackAuth.objects.get(team_id=result["team_id"]).delete()
-            slack_auth = SlackAuth.objects.create(access_token=result["access_token"], team_id=result["team_id"],
-                                                  team_name=result["team_name"], bot_id=result["bot"]["bot_user_id"],
-                                                  bot_access_token=result["bot"]["bot_access_token"])
+            queryset = SlackAuth.objects.filter(team_id=result["team_id"])
+            if queryset.exists():
+                queryset.update(access_token=result["access_token"], team_name=result["team_name"],
+                                bot_id=result["bot"]["bot_user_id"], bot_access_token=result["bot"]["bot_access_token"])
+                slack_auth = queryset.get()
+            else:
+                slack_auth = SlackAuth.objects.create(access_token=result["access_token"], team_id=result["team_id"],
+                                                      team_name=result["team_name"],
+                                                      bot_id=result["bot"]["bot_user_id"],
+                                                      bot_access_token=result["bot"]["bot_access_token"])
             retrieve_channel_users.delay(slack_auth.pk)
             return HttpResponseRedirect("http://talkai.xyz/success.html")
         except Exception:
