@@ -31,7 +31,7 @@ class ParserResponse:
 class ParserBase:
     __metaclass__ = abc.ABCMeta
 
-    def parse(self, text, session_id):
+    def parse(self, query, session_id):
         """
         Parses the given text, and uses the session id to remember the conversation history (for context)
         :param text: String
@@ -45,10 +45,10 @@ class APIAIParser(ParserBase):
     def __init__(self):
         self.ai = apiai.ApiAI(settings.API_AI_CLIENT_TOKEN)
 
-    def parse(self, text, session_id):
+    def parse(self, query, session_id):
         request = self.ai.text_request()
         request.session_id = session_id
-        request.query = text
+        request.query = query
         response = json.loads(request.getresponse().read().decode())
         contexts = {}
         for context in response["result"]["contexts"]:

@@ -229,6 +229,9 @@ class AbstractUser(models.Model):
             raise RuntimeError(error)
         return sub[0]
 
+    def __unicode__(self):
+        return self._converse_user.natural_identifier
+
     class Meta:
         abstract = True
 

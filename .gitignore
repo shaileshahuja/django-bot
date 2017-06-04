@@ -7,3 +7,6 @@ dist/
 *.egg-info/
 *.egg
 .cache
+example/example/local_settings.py
+example/db.sqlite3
+example/app.log*
