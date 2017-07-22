@@ -1,6 +1,6 @@
 django-bot
 ==========
-A django library that makes it easier to develop bots with a common interface for messaging platforms (eg. Slack, FB messenger) and natural langauge parsers (eg. api.ai).
+A django library that makes it easier to develop bots with a common interface for messaging platforms (eg. Slack, FB messenger) and natural language parsers (eg. api.ai).
 
 .. image:: https://travis-ci.org/shaileshahuja/django-bot.svg?branch=develop
     :target: https://travis-ci.org/shaileshahuja/django-bot
@@ -9,7 +9,7 @@ A django library that makes it easier to develop bots with a common interface fo
 
 Overview
 ========
-BETA version: Currently django-bot only supports Slack and api.ai. Future plans include supporting more messaging platforms (Facebook Messenger, Telegram, Kik, Google assistant, Cortana, Skype, Alexa), and more natural langauge parsers (AWS Lex, wit.ai).
+BETA version: Currently django-bot only supports Slack and api.ai. Future plans include supporting more messaging platforms (Facebook Messenger, Telegram, Kik, Google assistant, Cortana, Skype, Alexa), and more natural language parsers (AWS Lex, wit.ai).
 
 This library helps to maintain authenticated users and groups in the database and allows you to respond to any messages as well as initiate conversations with any of those.
 
