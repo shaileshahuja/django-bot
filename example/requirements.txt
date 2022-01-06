@@ -1,7 +1,7 @@
 amqp==2.1.4
 apiai==1.2.3
 billiard==3.5.0.2
-celery==4.0.2
+celery==5.2.2
 certifi==2017.4.17
 chardet==3.0.3
 Django==1.11.2
