@@ -1,4 +1,4 @@
-celery==4.0.2
+celery==5.2.2
 django==1.11.1
 slackclient==1.0.5
 apiai==1.2.3
